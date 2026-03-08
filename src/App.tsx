@@ -15,6 +15,7 @@ import Historical from "./pages/Historical";
 import SettingsPage from "./pages/SettingsPage";
 import Auth from "./pages/Auth";
 import ResetPassword from "./pages/ResetPassword";
+import LeadCapture from "./pages/LeadCapture";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -29,6 +30,7 @@ const App = () => (
           <Routes>
             <Route path="/auth" element={<Auth />} />
             <Route path="/reset-password" element={<ResetPassword />} />
+            <Route path="/capture" element={<LeadCapture />} />
             <Route path="/" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
             <Route path="/leads" element={<ProtectedRoute><Leads /></ProtectedRoute>} />
             <Route path="/pipeline" element={<ProtectedRoute><Pipeline /></ProtectedRoute>} />

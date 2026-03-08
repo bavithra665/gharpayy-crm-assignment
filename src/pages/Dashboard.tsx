@@ -1,5 +1,6 @@
 import AppLayout from '@/components/AppLayout';
 import KpiCard from '@/components/KpiCard';
+import OnboardingCard from '@/components/OnboardingCard';
 import { useDashboardStats, useLeads, useAgentStats } from '@/hooks/useCrmData';
 import { useAllReminders, useCompleteFollowUp } from '@/hooks/useLeadDetails';
 import { PIPELINE_STAGES, SOURCE_LABELS } from '@/types/crm';
@@ -15,17 +16,13 @@ import { useQueryClient } from '@tanstack/react-query';
 import { useEffect } from 'react';
 
 const PIE_COLORS = [
-  'hsl(152, 60%, 42%)', 'hsl(217, 80%, 56%)', 'hsl(330, 60%, 55%)',
-  'hsl(262, 55%, 55%)', 'hsl(38, 75%, 50%)', 'hsl(173, 55%, 42%)',
+  'hsl(var(--accent))', 'hsl(var(--info))', 'hsl(var(--destructive))',
+  'hsl(262, 55%, 55%)', 'hsl(var(--warning))', 'hsl(var(--success))',
 ];
 
 const container = {
   hidden: {},
   show: { transition: { staggerChildren: 0.05 } },
-};
-const item = {
-  hidden: { opacity: 0, y: 8 },
-  show: { opacity: 1, y: 0, transition: { duration: 0.4, ease: [0.32, 0.72, 0, 1] } },
 };
 
 const Dashboard = () => {
@@ -86,6 +83,9 @@ const Dashboard = () => {
 
   return (
     <AppLayout title="Dashboard" subtitle="Real-time overview of your sales pipeline">
+      {/* Onboarding */}
+      <OnboardingCard />
+
       {/* Overdue alert */}
       {overdueReminders.length > 0 && (
         <motion.div
@@ -101,14 +101,14 @@ const Dashboard = () => {
       {/* KPIs */}
       <motion.div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6" variants={container} initial="hidden" animate="show">
         <KpiCard title="Total Leads" value={stats?.totalLeads ?? 0} change={12} icon={<Users size={17} />} />
-        <KpiCard title="Avg Response Time" value={stats?.avgResponseTime ?? 0} suffix="min" change={-8} icon={<Clock size={17} />} color="hsl(38, 75%, 50%)" />
+        <KpiCard title="Avg Response Time" value={stats?.avgResponseTime ?? 0} suffix="min" change={-8} icon={<Clock size={17} />} color="hsl(var(--warning))" />
         <KpiCard title="Visits Scheduled" value={stats?.visitsScheduled ?? 0} change={15} icon={<CalendarCheck size={17} />} color="hsl(173, 55%, 42%)" />
-        <KpiCard title="Bookings Closed" value={stats?.bookingsClosed ?? 0} change={22} icon={<CheckCircle size={17} />} color="hsl(152, 60%, 42%)" />
+        <KpiCard title="Bookings Closed" value={stats?.bookingsClosed ?? 0} change={22} icon={<CheckCircle size={17} />} color="hsl(var(--success))" />
       </motion.div>
       <motion.div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8" variants={container} initial="hidden" animate="show">
         <KpiCard title="Conversion Rate" value={stats?.conversionRate ?? 0} suffix="%" change={5} icon={<TrendingUp size={17} />} color="hsl(262, 55%, 55%)" />
-        <KpiCard title="SLA Compliance" value={stats?.slaCompliance ?? 0} suffix="%" change={-3} icon={<Timer size={17} />} color="hsl(217, 80%, 56%)" />
-        <KpiCard title="New Today" value={stats?.newToday ?? 0} icon={<Users size={17} />} color="hsl(330, 60%, 55%)" />
+        <KpiCard title="SLA Compliance" value={stats?.slaCompliance ?? 0} suffix="%" change={-3} icon={<Timer size={17} />} color="hsl(var(--info))" />
+        <KpiCard title="New Today" value={stats?.newToday ?? 0} icon={<Users size={17} />} color="hsl(var(--destructive))" />
         <KpiCard title="SLA Breaches" value={stats?.slaBreaches ?? 0} icon={<AlertTriangle size={17} />} color="hsl(0, 55%, 50%)" />
       </motion.div>
 
@@ -118,10 +118,10 @@ const Dashboard = () => {
           <h3 className="font-display font-semibold text-xs text-foreground mb-5">Pipeline Distribution</h3>
           <ResponsiveContainer width="100%" height={220}>
             <BarChart data={pipelineData}>
-              <XAxis dataKey="name" tick={{ fontSize: 10, fill: 'hsl(220, 8%, 50%)' }} axisLine={false} tickLine={false} />
-              <YAxis tick={{ fontSize: 10, fill: 'hsl(220, 8%, 50%)' }} axisLine={false} tickLine={false} />
-              <Tooltip contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 8px 24px rgba(0,0,0,0.08)', fontSize: '11px' }} />
-              <Bar dataKey="count" fill="hsl(25, 95%, 53%)" radius={[8, 8, 0, 0]} />
+              <XAxis dataKey="name" tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }} axisLine={false} tickLine={false} />
+              <YAxis tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }} axisLine={false} tickLine={false} />
+              <Tooltip contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 8px 24px rgba(0,0,0,0.08)', fontSize: '11px', background: 'hsl(var(--card))' }} />
+              <Bar dataKey="count" fill="hsl(var(--accent))" radius={[8, 8, 0, 0]} />
             </BarChart>
           </ResponsiveContainer>
         </div>
@@ -133,7 +133,7 @@ const Dashboard = () => {
               <Pie data={sourceData} cx="50%" cy="50%" innerRadius={48} outerRadius={72} paddingAngle={3} dataKey="value" strokeWidth={0}>
                 {sourceData.map((_, i) => <Cell key={i} fill={PIE_COLORS[i % PIE_COLORS.length]} />)}
               </Pie>
-              <Tooltip contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 8px 24px rgba(0,0,0,0.08)', fontSize: '11px' }} />
+              <Tooltip contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 8px 24px rgba(0,0,0,0.08)', fontSize: '11px', background: 'hsl(var(--card))' }} />
             </PieChart>
           </ResponsiveContainer>
           <div className="flex flex-wrap gap-2.5 mt-3">

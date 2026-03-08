@@ -61,6 +61,12 @@ const CommandPalette = ({ open, onOpenChange }: CommandPaletteProps) => {
     onOpenChange(false);
   };
 
+  const triggerQuickAdd = () => {
+    onOpenChange(false);
+    // Dispatch a custom event that QuickAddLead listens to
+    window.dispatchEvent(new CustomEvent('open-quick-add'));
+  };
+
   return (
     <CommandDialog open={open} onOpenChange={onOpenChange}>
       <CommandInput placeholder="Search leads, pages, actions..." />
@@ -68,10 +74,10 @@ const CommandPalette = ({ open, onOpenChange }: CommandPaletteProps) => {
         <CommandEmpty>No results found.</CommandEmpty>
 
         <CommandGroup heading="Quick Actions">
-          <CommandItem onSelect={() => go('/leads')}>
+          <CommandItem onSelect={triggerQuickAdd}>
             <Plus size={14} className="mr-2 text-accent" />
             Add New Lead
-            <span className="ml-auto text-[10px] text-muted-foreground">N</span>
+            <span className="ml-auto text-[10px] text-muted-foreground">Quick-add</span>
           </CommandItem>
           <CommandItem onSelect={() => go('/visits')}>
             <CalendarCheck size={14} className="mr-2 text-accent" />

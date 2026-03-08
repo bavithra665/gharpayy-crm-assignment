@@ -1,11 +1,12 @@
 import { useState } from 'react';
 import AppLayout from '@/components/AppLayout';
 import ConversationChat from '@/components/ConversationChat';
+import EmptyState from '@/components/EmptyState';
 import { useConversationThreads } from '@/hooks/useConversationThreads';
-import { MessageCircle, Search } from 'lucide-react';
+import { MessageCircle, Search, ArrowLeft } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { formatDistanceToNow } from 'date-fns';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import { Skeleton } from '@/components/ui/skeleton';
 
 const Conversations = () => {
@@ -24,19 +25,24 @@ const Conversations = () => {
     return (
       <AppLayout title="Conversations" subtitle="WhatsApp & messaging hub">
         <div className="flex gap-4 h-[calc(100vh-140px)]">
-          <Skeleton className="w-[320px] h-full rounded-2xl" />
-          <Skeleton className="flex-1 h-full rounded-2xl" />
+          <Skeleton className="w-full md:w-[320px] h-full rounded-2xl" />
+          <Skeleton className="hidden md:block flex-1 h-full rounded-2xl" />
         </div>
       </AppLayout>
     );
   }
 
+  // Mobile: show chat view when a thread is selected
+  const showChatMobile = selectedLeadId !== null;
+
   return (
     <AppLayout title="Conversations" subtitle="WhatsApp & messaging hub">
       <div className="flex gap-4 h-[calc(100vh-140px)]">
-        {/* Thread list */}
+        {/* Thread list — hidden on mobile when chat is open */}
         <motion.div
-          className="w-[320px] shrink-0 bg-card border border-border rounded-2xl flex flex-col overflow-hidden"
+          className={`w-full md:w-[320px] md:shrink-0 bg-card border border-border rounded-2xl flex flex-col overflow-hidden ${
+            showChatMobile ? 'hidden md:flex' : 'flex'
+          }`}
           initial={{ opacity: 0, x: -12 }}
           animate={{ opacity: 1, x: 0 }}
           transition={{ duration: 0.4, ease: [0.32, 0.72, 0, 1] }}
@@ -57,16 +63,17 @@ const Conversations = () => {
           {/* Threads */}
           <div className="flex-1 overflow-y-auto">
             {filtered.length === 0 && (
-              <div className="flex flex-col items-center justify-center py-12">
-                <MessageCircle size={24} className="text-muted-foreground mb-2" />
-                <p className="text-xs text-muted-foreground">No conversations yet</p>
-              </div>
+              <EmptyState
+                icon={<MessageCircle size={22} className="text-accent" />}
+                title="No conversations"
+                description="Start a conversation with a lead to see it here"
+              />
             )}
             {filtered.map(t => (
               <button
                 key={t.leadId}
                 onClick={() => setSelectedLeadId(t.leadId)}
-                className={`w-full text-left px-3 py-3 border-b border-border hover:bg-secondary/50 transition-colors ${
+                className={`w-full text-left px-4 py-3.5 border-b border-border hover:bg-secondary/50 transition-colors ${
                   selectedLeadId === t.leadId ? 'bg-secondary' : ''
                 }`}
               >
@@ -85,14 +92,27 @@ const Conversations = () => {
           </div>
         </motion.div>
 
-        {/* Chat view */}
+        {/* Chat view — full width on mobile when selected */}
         <motion.div
-          className="flex-1 bg-card border border-border rounded-2xl overflow-hidden"
+          className={`flex-1 bg-card border border-border rounded-2xl overflow-hidden ${
+            showChatMobile ? 'flex flex-col' : 'hidden md:flex md:flex-col'
+          }`}
           initial={{ opacity: 0, x: 12 }}
           animate={{ opacity: 1, x: 0 }}
           transition={{ duration: 0.4, delay: 0.05, ease: [0.32, 0.72, 0, 1] }}
         >
-          <ConversationChat leadId={selectedLeadId} leadName={selectedThread?.leadName || ''} />
+          {/* Mobile back button */}
+          {showChatMobile && (
+            <div className="md:hidden flex items-center gap-2 px-4 py-3 border-b border-border">
+              <button onClick={() => setSelectedLeadId(null)} className="p-1.5 rounded-lg hover:bg-secondary transition-colors">
+                <ArrowLeft size={16} className="text-foreground" />
+              </button>
+              <span className="text-xs font-medium text-foreground">{selectedThread?.leadName}</span>
+            </div>
+          )}
+          <div className="flex-1 overflow-hidden">
+            <ConversationChat leadId={selectedLeadId} leadName={selectedThread?.leadName || ''} />
+          </div>
         </motion.div>
       </div>
     </AppLayout>

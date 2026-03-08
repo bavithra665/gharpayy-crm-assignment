@@ -4,14 +4,14 @@ import AddLeadDialog from '@/components/AddLeadDialog';
 import LeadDetailDrawer from '@/components/LeadDetailDrawer';
 import { useLeads } from '@/hooks/useCrmData';
 import { useBulkUpdateLeads, useDeleteLeads } from '@/hooks/useLeadDetails';
+import { useUpdateLead, useAgents, type LeadWithRelations } from '@/hooks/useCrmData';
 import { PIPELINE_STAGES, SOURCE_LABELS } from '@/types/crm';
-import { Filter, Download, Star, Trash2 } from 'lucide-react';
+import { Filter, Download, Star, Trash2, PhoneCall, MessageCircle } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Checkbox } from '@/components/ui/checkbox';
 import { toast } from 'sonner';
-import { useAgents, type LeadWithRelations } from '@/hooks/useCrmData';
 import { motion } from 'framer-motion';
 
 const statusBadge = (status: string) => {
@@ -41,6 +41,7 @@ const Leads = () => {
   const { data: agents } = useAgents();
   const bulkUpdate = useBulkUpdateLeads();
   const deleteLeads = useDeleteLeads();
+  const updateLead = useUpdateLead();
 
   const filtered = (leads || [])
     .filter(l => {
@@ -52,8 +53,8 @@ const Leads = () => {
       switch (sortBy) {
         case 'newest': return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
         case 'oldest': return new Date(a.created_at).getTime() - new Date(b.created_at).getTime();
-        case 'score_high': return ((b as any).lead_score ?? 0) - ((a as any).lead_score ?? 0);
-        case 'score_low': return ((a as any).lead_score ?? 0) - ((b as any).lead_score ?? 0);
+        case 'score_high': return (b.lead_score ?? 0) - (a.lead_score ?? 0);
+        case 'score_low': return (a.lead_score ?? 0) - (b.lead_score ?? 0);
         case 'response': return (a.first_response_time_min ?? 999) - (b.first_response_time_min ?? 999);
         default: return 0;
       }
@@ -98,10 +99,17 @@ const Leads = () => {
     } catch (err: any) { toast.error(err.message); }
   };
 
+  const handleInlineStatus = async (leadId: string, newStatus: string) => {
+    try {
+      await updateLead.mutateAsync({ id: leadId, status: newStatus as any });
+      toast.success('Status updated');
+    } catch (err: any) { toast.error(err.message); }
+  };
+
   const handleExport = () => {
     const csv = [
       ['Name', 'Phone', 'Email', 'Source', 'Status', 'Agent', 'Location', 'Budget', 'Score'].join(','),
-      ...filtered.map(l => [l.name, l.phone, l.email || '', l.source, l.status, l.agents?.name || '', l.preferred_location || '', l.budget || '', (l as any).lead_score ?? 0].join(','))
+      ...filtered.map(l => [l.name, l.phone, l.email || '', l.source, l.status, l.agents?.name || '', l.preferred_location || '', l.budget || '', l.lead_score ?? 0].join(','))
     ].join('\n');
     const blob = new Blob([csv], { type: 'text/csv' });
     const url = URL.createObjectURL(blob);
@@ -197,13 +205,12 @@ const Leads = () => {
                 <th className="text-left px-4 py-3.5 text-2xs font-medium text-muted-foreground">Score</th>
                 <th className="text-left px-4 py-3.5 text-2xs font-medium text-muted-foreground">Agent</th>
                 <th className="text-left px-4 py-3.5 text-2xs font-medium text-muted-foreground">Location</th>
-                <th className="text-left px-4 py-3.5 text-2xs font-medium text-muted-foreground">Budget</th>
-                <th className="text-left px-4 py-3.5 text-2xs font-medium text-muted-foreground">Response</th>
+                <th className="text-left px-4 py-3.5 text-2xs font-medium text-muted-foreground">Actions</th>
               </tr>
             </thead>
             <tbody>
               {filtered.map(lead => (
-                <tr key={lead.id} className="border-b border-border last:border-0 hover:bg-secondary/20 transition-colors cursor-pointer"
+                <tr key={lead.id} className="border-b border-border last:border-0 hover:bg-secondary/20 transition-colors cursor-pointer group"
                   onClick={() => openDetail(lead)}>
                   <td className="px-4 py-3.5" onClick={e => e.stopPropagation()}>
                     <Checkbox checked={selectedIds.has(lead.id)} onCheckedChange={() => toggleSelect(lead.id)} />
@@ -211,23 +218,31 @@ const Leads = () => {
                   <td className="px-4 py-3.5 font-medium text-foreground">{lead.name}</td>
                   <td className="px-4 py-3.5 text-2xs text-muted-foreground">{lead.phone}</td>
                   <td className="px-4 py-3.5 text-2xs text-muted-foreground">{SOURCE_LABELS[lead.source as keyof typeof SOURCE_LABELS] || lead.source}</td>
-                  <td className="px-4 py-3.5">{statusBadge(lead.status)}</td>
+                  <td className="px-4 py-3.5" onClick={e => e.stopPropagation()}>
+                    <select
+                      value={lead.status}
+                      onChange={e => handleInlineStatus(lead.id, e.target.value)}
+                      className="text-[10px] bg-transparent border border-transparent hover:border-border rounded-lg px-1.5 py-1 text-foreground cursor-pointer focus:outline-none focus:ring-1 focus:ring-ring/30 transition-colors"
+                    >
+                      {PIPELINE_STAGES.map(s => <option key={s.key} value={s.key}>{s.label}</option>)}
+                    </select>
+                  </td>
                   <td className="px-4 py-3.5">
-                    <span className={`text-2xs font-semibold flex items-center gap-1 ${scoreColor((lead as any).lead_score ?? 0)}`}>
-                      <Star size={10} /> {(lead as any).lead_score ?? 0}
+                    <span className={`text-2xs font-semibold flex items-center gap-1 ${scoreColor(lead.lead_score ?? 0)}`}>
+                      <Star size={10} /> {lead.lead_score ?? 0}
                     </span>
                   </td>
                   <td className="px-4 py-3.5 text-2xs text-muted-foreground">{lead.agents?.name || 'Unassigned'}</td>
                   <td className="px-4 py-3.5 text-2xs text-muted-foreground">{lead.preferred_location || '—'}</td>
-                  <td className="px-4 py-3.5 text-2xs text-muted-foreground">{lead.budget || '—'}</td>
-                  <td className="px-4 py-3.5">
-                    {lead.first_response_time_min !== null ? (
-                      <span className={`text-2xs font-medium ${(lead.first_response_time_min ?? 0) <= 5 ? 'text-success' : 'text-destructive'}`}>
-                        {lead.first_response_time_min}m
-                      </span>
-                    ) : (
-                      <span className="text-2xs text-destructive font-medium">Pending</span>
-                    )}
+                  <td className="px-4 py-3.5" onClick={e => e.stopPropagation()}>
+                    <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                      <a href={`tel:${lead.phone}`} className="p-1.5 rounded-lg hover:bg-secondary transition-colors" title="Call">
+                        <PhoneCall size={12} className="text-muted-foreground" />
+                      </a>
+                      <a href={`https://wa.me/${lead.phone.replace(/[^0-9]/g, '')}`} target="_blank" rel="noopener noreferrer" className="p-1.5 rounded-lg hover:bg-secondary transition-colors" title="WhatsApp">
+                        <MessageCircle size={12} className="text-success" />
+                      </a>
+                    </div>
                   </td>
                 </tr>
               ))}

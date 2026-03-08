@@ -41,7 +41,7 @@ const Analytics = () => {
     };
   }).filter(s => s.leads > 0);
 
-  // 3. Agent Leaderboard (sorted by conversion rate)
+  // 3. Agent Leaderboard
   const leaderboard = [...(agentStats || [])].sort((a, b) => {
     const rateA = a.totalLeads ? a.conversions / a.totalLeads : 0;
     const rateB = b.totalLeads ? b.conversions / b.totalLeads : 0;
@@ -72,6 +72,15 @@ const Analytics = () => {
     animate: { opacity: 1, y: 0 },
     transition: { duration: 0.4, delay, ease: [0.32, 0.72, 0, 1] as const },
   });
+
+  const chartTooltipStyle = {
+    borderRadius: '12px',
+    border: 'none',
+    boxShadow: '0 8px 24px rgba(0,0,0,0.08)',
+    fontSize: '11px',
+    background: 'hsl(var(--card))',
+    color: 'hsl(var(--foreground))',
+  };
 
   return (
     <AppLayout title="Analytics" subtitle="Performance metrics and insights">
@@ -109,12 +118,12 @@ const Analytics = () => {
           <h3 className="font-display font-semibold text-xs text-foreground mb-5">Lead Source ROI</h3>
           <ResponsiveContainer width="100%" height={240}>
             <BarChart data={sourceROI}>
-              <CartesianGrid strokeDasharray="3 3" stroke="hsl(220, 10%, 92%)" />
-              <XAxis dataKey="source" tick={{ fontSize: 10, fill: 'hsl(220, 8%, 50%)' }} axisLine={false} tickLine={false} />
-              <YAxis tick={{ fontSize: 10, fill: 'hsl(220, 8%, 50%)' }} axisLine={false} tickLine={false} />
-              <Tooltip contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 8px 24px rgba(0,0,0,0.08)', fontSize: '11px' }} />
-              <Bar dataKey="leads" fill="hsl(25, 95%, 53%)" radius={[6, 6, 0, 0]} name="Total Leads" />
-              <Bar dataKey="bookings" fill="hsl(152, 60%, 42%)" radius={[6, 6, 0, 0]} name="Bookings" />
+              <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+              <XAxis dataKey="source" tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }} axisLine={false} tickLine={false} />
+              <YAxis tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }} axisLine={false} tickLine={false} />
+              <Tooltip contentStyle={chartTooltipStyle} />
+              <Bar dataKey="leads" fill="hsl(var(--accent))" radius={[6, 6, 0, 0]} name="Total Leads" />
+              <Bar dataKey="bookings" fill="hsl(var(--success))" radius={[6, 6, 0, 0]} name="Bookings" />
             </BarChart>
           </ResponsiveContainer>
         </motion.div>
@@ -159,12 +168,12 @@ const Analytics = () => {
           <h3 className="font-display font-semibold text-xs text-foreground mb-5">Weekly Trends</h3>
           <ResponsiveContainer width="100%" height={260}>
             <LineChart data={weeklyTrends}>
-              <CartesianGrid strokeDasharray="3 3" stroke="hsl(220, 10%, 92%)" />
-              <XAxis dataKey="week" tick={{ fontSize: 10, fill: 'hsl(220, 8%, 50%)' }} axisLine={false} tickLine={false} />
-              <YAxis tick={{ fontSize: 10, fill: 'hsl(220, 8%, 50%)' }} axisLine={false} tickLine={false} />
-              <Tooltip contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 8px 24px rgba(0,0,0,0.08)', fontSize: '11px' }} />
-              <Line type="monotone" dataKey="leads" stroke="hsl(25, 95%, 53%)" strokeWidth={2} dot={{ r: 3 }} name="Leads" />
-              <Line type="monotone" dataKey="bookings" stroke="hsl(152, 60%, 42%)" strokeWidth={2} dot={{ r: 3 }} name="Bookings" />
+              <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+              <XAxis dataKey="week" tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }} axisLine={false} tickLine={false} />
+              <YAxis tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }} axisLine={false} tickLine={false} />
+              <Tooltip contentStyle={chartTooltipStyle} />
+              <Line type="monotone" dataKey="leads" stroke="hsl(var(--accent))" strokeWidth={2} dot={{ r: 3 }} name="Leads" />
+              <Line type="monotone" dataKey="bookings" stroke="hsl(var(--success))" strokeWidth={2} dot={{ r: 3 }} name="Bookings" />
             </LineChart>
           </ResponsiveContainer>
         </motion.div>
