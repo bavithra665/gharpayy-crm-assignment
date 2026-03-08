@@ -14,6 +14,48 @@ export type Database = {
   }
   public: {
     Tables: {
+      activity_log: {
+        Row: {
+          action: string
+          agent_id: string | null
+          created_at: string
+          id: string
+          lead_id: string
+          metadata: Json
+        }
+        Insert: {
+          action: string
+          agent_id?: string | null
+          created_at?: string
+          id?: string
+          lead_id: string
+          metadata?: Json
+        }
+        Update: {
+          action?: string
+          agent_id?: string | null
+          created_at?: string
+          id?: string
+          lead_id?: string
+          metadata?: Json
+        }
+        Relationships: [
+          {
+            foreignKeyName: "activity_log_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "agents"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "activity_log_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "leads"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       agents: {
         Row: {
           created_at: string
@@ -214,6 +256,63 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      message_templates: {
+        Row: {
+          body: string
+          channel: string
+          created_at: string
+          id: string
+          name: string
+        }
+        Insert: {
+          body: string
+          channel?: string
+          created_at?: string
+          id?: string
+          name: string
+        }
+        Update: {
+          body?: string
+          channel?: string
+          created_at?: string
+          id?: string
+          name?: string
+        }
+        Relationships: []
+      }
+      notifications: {
+        Row: {
+          body: string
+          created_at: string
+          id: string
+          is_read: boolean
+          link: string | null
+          title: string
+          type: string
+          user_id: string
+        }
+        Insert: {
+          body?: string
+          created_at?: string
+          id?: string
+          is_read?: boolean
+          link?: string | null
+          title: string
+          type?: string
+          user_id: string
+        }
+        Update: {
+          body?: string
+          created_at?: string
+          id?: string
+          is_read?: boolean
+          link?: string | null
+          title?: string
+          type?: string
+          user_id?: string
+        }
+        Relationships: []
       }
       profiles: {
         Row: {
