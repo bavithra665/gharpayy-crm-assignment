@@ -28,7 +28,6 @@ const navItems = [
 
 const AppSidebar = ({ isOpen, onClose }: { isOpen?: boolean; onClose?: () => void }) => {
   const location = useLocation();
-  const { user, signOut } = useAuth();
   const [dark, setDark] = useState(() => document.documentElement.classList.contains('dark'));
 
   useEffect(() => {
