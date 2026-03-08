@@ -2,7 +2,7 @@ import { useState } from 'react';
 import AppLayout from '@/components/AppLayout';
 import AddLeadDialog from '@/components/AddLeadDialog';
 import LeadDetailDrawer from '@/components/LeadDetailDrawer';
-import { useLeads } from '@/hooks/useCrmData';
+import { useLeadsPaginated } from '@/hooks/useCrmData';
 import { useBulkUpdateLeads, useDeleteLeads } from '@/hooks/useLeadDetails';
 import { useUpdateLead, useAgents, type LeadWithRelations } from '@/hooks/useCrmData';
 import { PIPELINE_STAGES, SOURCE_LABELS } from '@/types/crm';
