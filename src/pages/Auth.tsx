@@ -10,15 +10,27 @@ import { motion } from 'framer-motion';
 
 const Auth = () => {
   const [mode, setMode] = useState<'login' | 'signup' | 'forgot'>('login');
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
+  const [email, setEmail] = useState('demo@gharpayy.com');
+  const [password, setPassword] = useState('demo1234');
   const [fullName, setFullName] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
 
+  // Auto-create demo account on first visit
+  const ensureDemoAccount = async () => {
+    const { error } = await supabase.auth.signUp({
+      email: 'demo@gharpayy.com',
+      password: 'demo1234',
+      options: { data: { full_name: 'Demo User' } },
+    });
+    // Ignore if already exists
+  };
+
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
+    // Ensure demo account exists first
+    if (email === 'demo@gharpayy.com') await ensureDemoAccount();
     const { error } = await supabase.auth.signInWithPassword({ email, password });
     if (error) toast.error(error.message);
     else toast.success('Welcome back!');
