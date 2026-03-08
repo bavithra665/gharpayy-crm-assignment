@@ -8,8 +8,9 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { PIPELINE_STAGES, SOURCE_LABELS } from '@/types/crm';
 import { useUpdateLead, useAgents, type LeadWithRelations } from '@/hooks/useCrmData';
 import { useConversations, useFollowUps, useCreateFollowUp } from '@/hooks/useLeadDetails';
+import { useActivityLog } from '@/hooks/useActivityLog';
 import { format, formatDistanceToNow } from 'date-fns';
-import { Phone, Mail, MapPin, IndianRupee, Clock, MessageCircle, CalendarCheck, User, Star, Send, Bell } from 'lucide-react';
+import { Phone, Mail, MapPin, IndianRupee, Clock, MessageCircle, CalendarCheck, User, Star, Send, Bell, ArrowRightLeft, Eye, Activity } from 'lucide-react';
 import { toast } from 'sonner';
 
 interface Props {
@@ -24,11 +25,19 @@ const scoreColor = (score: number) => {
   return 'text-red-600 bg-red-100';
 };
 
+const ACTION_ICONS: Record<string, typeof Activity> = {
+  status_change: ArrowRightLeft,
+  agent_reassigned: User,
+  visit_scheduled: Eye,
+  visit_outcome: CalendarCheck,
+};
+
 const LeadDetailDrawer = ({ lead, open, onClose }: Props) => {
   const updateLead = useUpdateLead();
   const { data: agents } = useAgents();
   const { data: conversations } = useConversations(lead?.id);
   const { data: followUps } = useFollowUps(lead?.id);
+  const { data: activityLog } = useActivityLog(lead?.id);
   const createFollowUp = useCreateFollowUp();
   const [note, setNote] = useState('');
   const [reminderDate, setReminderDate] = useState('');
@@ -65,6 +74,16 @@ const LeadDetailDrawer = ({ lead, open, onClose }: Props) => {
       setNote('');
       setReminderDate('');
     } catch (err: any) { toast.error(err.message); }
+  };
+
+  const formatAction = (action: string, metadata: any) => {
+    switch (action) {
+      case 'status_change': return `Status changed from ${(metadata.from || '').replace(/_/g, ' ')} to ${(metadata.to || '').replace(/_/g, ' ')}`;
+      case 'agent_reassigned': return 'Agent reassigned';
+      case 'visit_scheduled': return `Visit scheduled for ${metadata.scheduled_at ? format(new Date(metadata.scheduled_at), 'MMM d, h:mm a') : 'TBD'}`;
+      case 'visit_outcome': return `Visit outcome: ${metadata.outcome || 'unknown'}`;
+      default: return action.replace(/_/g, ' ');
+    }
   };
 
   return (
@@ -141,50 +160,65 @@ const LeadDetailDrawer = ({ lead, open, onClose }: Props) => {
         {/* Tabs */}
         <Tabs defaultValue="timeline" className="p-6">
           <TabsList className="w-full grid grid-cols-3">
-            <TabsTrigger value="timeline" className="text-xs">Timeline</TabsTrigger>
+            <TabsTrigger value="timeline" className="text-xs">Activity</TabsTrigger>
             <TabsTrigger value="conversations" className="text-xs">Messages</TabsTrigger>
             <TabsTrigger value="followups" className="text-xs">Follow-ups</TabsTrigger>
           </TabsList>
 
-          <TabsContent value="timeline" className="mt-4 space-y-3">
-            <div className="text-xs text-muted-foreground space-y-2">
-              <div className="flex items-start gap-3 p-3 rounded-lg bg-secondary/50">
-                <div className="w-6 h-6 rounded-full bg-primary/20 flex items-center justify-center shrink-0 mt-0.5">
-                  <User size={10} className="text-primary" />
-                </div>
-                <div>
-                  <p className="font-medium text-foreground text-xs">Lead created</p>
-                  <p className="text-[10px] text-muted-foreground">{format(new Date(lead.created_at), 'MMM d, yyyy h:mm a')}</p>
-                  <p className="text-[10px]">Source: {SOURCE_LABELS[lead.source as keyof typeof SOURCE_LABELS]}</p>
-                </div>
-              </div>
-              {lead.first_response_time_min != null && (
-                <div className="flex items-start gap-3 p-3 rounded-lg bg-secondary/50">
-                  <div className="w-6 h-6 rounded-full bg-emerald-100 flex items-center justify-center shrink-0 mt-0.5">
-                    <Clock size={10} className="text-emerald-600" />
+          <TabsContent value="timeline" className="mt-4 space-y-2">
+            {/* Activity log from DB */}
+            {activityLog?.map(entry => {
+              const IconComp = ACTION_ICONS[entry.action] || Activity;
+              return (
+                <div key={entry.id} className="flex items-start gap-3 p-3 rounded-lg bg-secondary/50">
+                  <div className="w-6 h-6 rounded-full bg-accent/10 flex items-center justify-center shrink-0 mt-0.5">
+                    <IconComp size={10} className="text-accent" />
                   </div>
                   <div>
-                    <p className="font-medium text-foreground text-xs">First response</p>
-                    <p className="text-[10px]">{lead.first_response_time_min} minutes after creation</p>
+                    <p className="font-medium text-foreground text-xs">{formatAction(entry.action, entry.metadata)}</p>
+                    <p className="text-[10px] text-muted-foreground">{format(new Date(entry.created_at), 'MMM d, yyyy h:mm a')}</p>
+                    {(entry as any).agents?.name && (
+                      <p className="text-[10px] text-muted-foreground">by {(entry as any).agents.name}</p>
+                    )}
                   </div>
                 </div>
-              )}
-              <div className="flex items-start gap-3 p-3 rounded-lg bg-secondary/50">
-                <div className="w-6 h-6 rounded-full bg-info/20 flex items-center justify-center shrink-0 mt-0.5">
-                  <Clock size={10} className="text-info" />
-                </div>
-                <div>
-                  <p className="font-medium text-foreground text-xs">Last activity</p>
-                  <p className="text-[10px]">{formatDistanceToNow(new Date(lead.last_activity_at), { addSuffix: true })}</p>
-                </div>
+              );
+            })}
+
+            {/* Static entries */}
+            <div className="flex items-start gap-3 p-3 rounded-lg bg-secondary/50">
+              <div className="w-6 h-6 rounded-full bg-primary/20 flex items-center justify-center shrink-0 mt-0.5">
+                <User size={10} className="text-primary" />
               </div>
-              {lead.notes && (
-                <div className="p-3 rounded-lg bg-accent/50 border border-accent">
-                  <p className="text-[10px] font-medium text-accent-foreground mb-1">Notes</p>
-                  <p className="text-xs text-foreground">{lead.notes}</p>
-                </div>
-              )}
+              <div>
+                <p className="font-medium text-foreground text-xs">Lead created</p>
+                <p className="text-[10px] text-muted-foreground">{format(new Date(lead.created_at), 'MMM d, yyyy h:mm a')}</p>
+                <p className="text-[10px]">Source: {SOURCE_LABELS[lead.source as keyof typeof SOURCE_LABELS]}</p>
+              </div>
             </div>
+
+            {(!activityLog || activityLog.length === 0) && (
+              <>
+                {lead.first_response_time_min != null && (
+                  <div className="flex items-start gap-3 p-3 rounded-lg bg-secondary/50">
+                    <div className="w-6 h-6 rounded-full bg-emerald-100 flex items-center justify-center shrink-0 mt-0.5">
+                      <Clock size={10} className="text-emerald-600" />
+                    </div>
+                    <div>
+                      <p className="font-medium text-foreground text-xs">First response</p>
+                      <p className="text-[10px]">{lead.first_response_time_min} minutes after creation</p>
+                    </div>
+                  </div>
+                )}
+              </>
+            )}
+
+            {lead.notes && (
+              <div className="p-3 rounded-lg bg-accent/50 border border-accent">
+                <p className="text-[10px] font-medium text-accent-foreground mb-1">Notes</p>
+                <p className="text-xs text-foreground">{lead.notes}</p>
+              </div>
+            )}
           </TabsContent>
 
           <TabsContent value="conversations" className="mt-4">

@@ -10,6 +10,9 @@ import { Button } from '@/components/ui/button';
 import { format, isPast } from 'date-fns';
 import { toast } from 'sonner';
 import { motion } from 'framer-motion';
+import { supabase } from '@/integrations/supabase/client';
+import { useQueryClient } from '@tanstack/react-query';
+import { useEffect } from 'react';
 
 const PIE_COLORS = [
   'hsl(152, 60%, 42%)', 'hsl(217, 80%, 56%)', 'hsl(330, 60%, 55%)',
@@ -31,6 +34,20 @@ const Dashboard = () => {
   const { data: agentStats } = useAgentStats();
   const { data: reminders } = useAllReminders();
   const completeFollowUp = useCompleteFollowUp();
+  const qc = useQueryClient();
+
+  // Realtime subscription for leads
+  useEffect(() => {
+    const channel = supabase
+      .channel('dashboard-leads-realtime')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'leads' }, () => {
+        qc.invalidateQueries({ queryKey: ['leads'] });
+        qc.invalidateQueries({ queryKey: ['dashboard-stats'] });
+        qc.invalidateQueries({ queryKey: ['agent-stats'] });
+      })
+      .subscribe();
+    return () => { supabase.removeChannel(channel); };
+  }, [qc]);
 
   const pipelineData = PIPELINE_STAGES.map(stage => ({
     name: stage.label.split(' ')[0],

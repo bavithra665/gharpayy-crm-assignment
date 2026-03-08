@@ -5,10 +5,11 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
-import { Plus } from 'lucide-react';
+import { Plus, AlertTriangle } from 'lucide-react';
 import { useCreateLead, useAgents } from '@/hooks/useCrmData';
 import { SOURCE_LABELS } from '@/types/crm';
 import { toast } from 'sonner';
+import { supabase } from '@/integrations/supabase/client';
 
 const AddLeadDialog = () => {
   const [open, setOpen] = useState(false);
@@ -22,9 +23,17 @@ const AddLeadDialog = () => {
     notes: '',
     assigned_agent_id: '' as string,
   });
+  const [duplicate, setDuplicate] = useState<{ id: string; name: string; phone: string; status: string } | null>(null);
 
   const createLead = useCreateLead();
   const { data: agents } = useAgents();
+
+  const checkDuplicate = async (phone: string) => {
+    if (!phone || phone.length < 5) { setDuplicate(null); return; }
+    const { data } = await supabase.from('leads').select('id, name, phone, status').eq('phone', phone).limit(1);
+    if (data && data.length > 0) setDuplicate(data[0]);
+    else setDuplicate(null);
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -34,7 +43,6 @@ const AddLeadDialog = () => {
     }
 
     try {
-      // Round-robin: pick agent with fewest leads if none selected
       const agentId = form.assigned_agent_id || agents?.[0]?.id || null;
 
       await createLead.mutateAsync({
@@ -51,6 +59,7 @@ const AddLeadDialog = () => {
 
       toast.success('Lead created successfully!');
       setOpen(false);
+      setDuplicate(null);
       setForm({ name: '', phone: '', email: '', source: 'whatsapp', budget: '', preferred_location: '', notes: '', assigned_agent_id: '' });
     } catch (err: any) {
       toast.error(err.message || 'Failed to create lead');
@@ -58,7 +67,7 @@ const AddLeadDialog = () => {
   };
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
+    <Dialog open={open} onOpenChange={(v) => { setOpen(v); if (!v) setDuplicate(null); }}>
       <DialogTrigger asChild>
         <Button size="sm" className="gap-1.5 text-xs">
           <Plus size={13} /> Add Lead
@@ -76,9 +85,28 @@ const AddLeadDialog = () => {
             </div>
             <div className="space-y-1.5">
               <Label className="text-xs">Phone *</Label>
-              <Input placeholder="+91 98765 43210" value={form.phone} onChange={e => setForm(f => ({ ...f, phone: e.target.value }))} />
+              <Input
+                placeholder="+91 98765 43210"
+                value={form.phone}
+                onChange={e => { setForm(f => ({ ...f, phone: e.target.value })); }}
+                onBlur={() => checkDuplicate(form.phone)}
+              />
             </div>
           </div>
+
+          {/* Duplicate warning */}
+          {duplicate && (
+            <div className="flex items-start gap-2 p-3 rounded-xl bg-warning/10 border border-warning/20">
+              <AlertTriangle size={14} className="text-warning shrink-0 mt-0.5" />
+              <div className="text-xs">
+                <p className="font-medium text-foreground">Possible duplicate found</p>
+                <p className="text-muted-foreground mt-0.5">
+                  <strong>{duplicate.name}</strong> ({duplicate.phone}) — Status: {duplicate.status.replace(/_/g, ' ')}
+                </p>
+                <p className="text-[10px] text-muted-foreground mt-1">You can still create this lead if needed.</p>
+              </div>
+            </div>
+          )}
 
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1.5">

@@ -167,7 +167,7 @@ const Pipeline = () => {
                 budget: activeLead.budget ?? undefined,
                 preferredLocation: activeLead.preferred_location ?? undefined,
                 property: activeLead.properties?.name ?? undefined,
-              }} compact />
+              }} compact stale={new Date(activeLead.last_activity_at).getTime() < Date.now() - 7 * 86400000} />
             </div>
           ) : null}
         </DragOverlay>
