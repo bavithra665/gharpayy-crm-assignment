@@ -2,13 +2,14 @@ import { ReactNode } from 'react';
 import AppSidebar from './AppSidebar';
 import { Bell, Search } from 'lucide-react';
 
-interface AppLayoutProps {
+export interface AppLayoutProps {
   children: ReactNode;
   title: string;
   subtitle?: string;
+  actions?: ReactNode;
 }
 
-const AppLayout = ({ children, title, subtitle }: AppLayoutProps) => {
+const AppLayout = ({ children, title, subtitle, actions }: AppLayoutProps) => {
   return (
     <div className="min-h-screen bg-background">
       <AppSidebar />
