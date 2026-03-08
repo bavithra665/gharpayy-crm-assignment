@@ -3,8 +3,9 @@ import KpiCard from '@/components/KpiCard';
 import OnboardingCard from '@/components/OnboardingCard';
 import { useDashboardStats, useLeads, useAgentStats } from '@/hooks/useCrmData';
 import { useAllReminders, useCompleteFollowUp } from '@/hooks/useLeadDetails';
+import { useBookingStats } from '@/hooks/useBookings';
 import { PIPELINE_STAGES, SOURCE_LABELS } from '@/types/crm';
-import { Users, Clock, CalendarCheck, CheckCircle, TrendingUp, AlertTriangle, Timer, Star } from 'lucide-react';
+import { Users, Clock, CalendarCheck, CheckCircle, TrendingUp, AlertTriangle, Timer, Star, IndianRupee } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Button } from '@/components/ui/button';
@@ -29,6 +30,7 @@ const Dashboard = () => {
   const { data: stats, isLoading: statsLoading } = useDashboardStats();
   const { data: leads, isLoading: leadsLoading } = useLeads();
   const { data: agentStats } = useAgentStats();
+  const { data: bookingStats } = useBookingStats();
   const { data: reminders } = useAllReminders();
   const completeFollowUp = useCompleteFollowUp();
   const qc = useQueryClient();
@@ -111,6 +113,16 @@ const Dashboard = () => {
         <KpiCard title="New Today" value={stats?.newToday ?? 0} icon={<Users size={17} />} color="hsl(var(--destructive))" />
         <KpiCard title="SLA Breaches" value={stats?.slaBreaches ?? 0} icon={<AlertTriangle size={17} />} color="hsl(0, 55%, 50%)" />
       </motion.div>
+
+      {/* Revenue Forecast */}
+      {bookingStats && (bookingStats.revenue > 0 || bookingStats.pendingRevenue > 0) && (
+        <motion.div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8" initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
+          <KpiCard title="Confirmed Revenue" value={`₹${(bookingStats.revenue / 1000).toFixed(0)}k`} icon={<IndianRupee size={17} />} color="hsl(var(--success))" />
+          <KpiCard title="Pipeline Revenue" value={`₹${(bookingStats.pendingRevenue / 1000).toFixed(0)}k`} icon={<TrendingUp size={17} />} color="hsl(var(--warning))" />
+          <KpiCard title="Projected Revenue" value={`₹${((bookingStats.revenue + bookingStats.pendingRevenue * 0.6) / 1000).toFixed(0)}k`} icon={<IndianRupee size={17} />} color="hsl(var(--accent))" />
+          <KpiCard title="Active Bookings" value={bookingStats.confirmed + bookingStats.checkedIn} icon={<CheckCircle size={17} />} color="hsl(var(--info))" />
+        </motion.div>
+      )}
 
       {/* Charts */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-8">

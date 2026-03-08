@@ -18,6 +18,7 @@ import Inventory from "./pages/Inventory";
 import EffortDashboard from "./pages/EffortDashboard";
 import Availability from "./pages/Availability";
 import Matching from "./pages/Matching";
+import Bookings from "./pages/Bookings";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -43,6 +44,7 @@ const App = () => (
           <Route path="/effort" element={<ProtectedRoute><EffortDashboard /></ProtectedRoute>} />
           <Route path="/availability" element={<ProtectedRoute><Availability /></ProtectedRoute>} />
           <Route path="/matching" element={<ProtectedRoute><Matching /></ProtectedRoute>} />
+          <Route path="/bookings" element={<ProtectedRoute><Bookings /></ProtectedRoute>} />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </BrowserRouter>

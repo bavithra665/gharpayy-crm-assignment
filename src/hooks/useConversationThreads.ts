@@ -5,6 +5,9 @@ export interface ConversationThread {
   leadId: string;
   leadName: string;
   leadPhone: string;
+  leadBudget?: string;
+  leadLocation?: string;
+  leadStatus?: string;
   lastMessage: string;
   lastMessageAt: string;
   channel: string;
@@ -17,7 +20,7 @@ export const useConversationThreads = () =>
     queryFn: async () => {
       const { data, error } = await supabase
         .from('conversations')
-        .select('*, leads(id, name, phone)')
+        .select('*, leads(id, name, phone, budget, preferred_location, status)')
         .order('created_at', { ascending: false });
       if (error) throw error;
 
@@ -30,6 +33,9 @@ export const useConversationThreads = () =>
             leadId: lid,
             leadName: (c as any).leads?.name || 'Unknown',
             leadPhone: (c as any).leads?.phone || '',
+            leadBudget: (c as any).leads?.budget || '',
+            leadLocation: (c as any).leads?.preferred_location || '',
+            leadStatus: (c as any).leads?.status || 'new',
             lastMessage: c.message,
             lastMessageAt: c.created_at,
             channel: c.channel,

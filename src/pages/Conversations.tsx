@@ -111,7 +111,7 @@ const Conversations = () => {
             </div>
           )}
           <div className="flex-1 overflow-hidden">
-            <ConversationChat leadId={selectedLeadId} leadName={selectedThread?.leadName || ''} />
+            <ConversationChat leadId={selectedLeadId} leadName={selectedThread?.leadName || ''} leadBudget={selectedThread?.leadBudget} leadLocation={selectedThread?.leadLocation} leadStatus={selectedThread?.leadStatus} />
           </div>
         </motion.div>
       </div>

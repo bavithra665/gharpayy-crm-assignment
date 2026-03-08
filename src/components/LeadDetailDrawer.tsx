@@ -9,9 +9,11 @@ import { PIPELINE_STAGES, SOURCE_LABELS } from '@/types/crm';
 import { useUpdateLead, useAgents, type LeadWithRelations } from '@/hooks/useCrmData';
 import { useConversations, useFollowUps, useCreateFollowUp } from '@/hooks/useLeadDetails';
 import { useActivityLog } from '@/hooks/useActivityLog';
+import { useBookingsByLead } from '@/hooks/useBookings';
 import { format, formatDistanceToNow } from 'date-fns';
-import { Phone, Mail, MapPin, IndianRupee, Clock, MessageCircle, CalendarCheck, User, Star, Send, Bell, ArrowRightLeft, Eye, Activity } from 'lucide-react';
+import { Phone, Mail, MapPin, IndianRupee, Clock, MessageCircle, CalendarCheck, User, Star, Send, Bell, ArrowRightLeft, Eye, Activity, Sparkles, Loader2, Receipt } from 'lucide-react';
 import { toast } from 'sonner';
+import { supabase } from '@/integrations/supabase/client';
 
 interface Props {
   lead: LeadWithRelations | null;
@@ -38,9 +40,35 @@ const LeadDetailDrawer = ({ lead, open, onClose }: Props) => {
   const { data: conversations } = useConversations(lead?.id);
   const { data: followUps } = useFollowUps(lead?.id);
   const { data: activityLog } = useActivityLog(lead?.id);
+  const { data: bookings } = useBookingsByLead(lead?.id);
   const createFollowUp = useCreateFollowUp();
   const [note, setNote] = useState('');
   const [reminderDate, setReminderDate] = useState('');
+  const [aiSummary, setAiSummary] = useState<any>(null);
+  const [aiLoading, setAiLoading] = useState(false);
+
+  const handleAiSummary = async () => {
+    if (!lead) return;
+    setAiLoading(true);
+    setAiSummary(null);
+    try {
+      const { data, error } = await supabase.functions.invoke('ai-lead-summary', {
+        body: {
+          lead: { ...lead, agent_name: lead.agents?.name },
+          conversations: conversations?.slice(0, 5),
+          visits: [],
+          bookings: bookings?.map((b: any) => ({ property_name: b.properties?.name, booking_status: b.booking_status, monthly_rent: b.monthly_rent })),
+        },
+      });
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+      setAiSummary(data);
+    } catch (e: any) {
+      toast.error(e.message || 'AI analysis failed');
+    } finally {
+      setAiLoading(false);
+    }
+  };
 
   if (!lead) return null;
 
@@ -155,6 +183,52 @@ const LeadDetailDrawer = ({ lead, open, onClose }: Props) => {
               </Select>
             </div>
           </div>
+
+          {/* AI Summary */}
+          <div className="mt-4">
+            {!aiSummary && (
+              <Button variant="outline" size="sm" className="w-full gap-2 text-xs rounded-xl" onClick={handleAiSummary} disabled={aiLoading}>
+                {aiLoading ? <Loader2 size={12} className="animate-spin" /> : <Sparkles size={12} />}
+                {aiLoading ? 'Analyzing with AI...' : 'AI Lead Analysis'}
+              </Button>
+            )}
+            {aiSummary && (
+              <div className="p-3 rounded-xl bg-accent/5 border border-accent/20 space-y-2">
+                <div className="flex items-center gap-2">
+                  <Sparkles size={12} className="text-accent" />
+                  <span className="text-[10px] font-semibold text-accent">AI ANALYSIS</span>
+                  <Badge variant="outline" className={`text-[9px] ml-auto ${aiSummary.urgency === 'hot' ? 'border-success text-success' : aiSummary.urgency === 'warm' ? 'border-warning text-warning' : 'border-muted-foreground text-muted-foreground'}`}>
+                    {aiSummary.urgency?.toUpperCase()}
+                  </Badge>
+                </div>
+                <p className="text-xs text-foreground">{aiSummary.intent}</p>
+                <p className="text-[10px] text-muted-foreground">{aiSummary.urgency_reason}</p>
+                <div className="border-t border-border pt-2 mt-2">
+                  <p className="text-[10px] font-medium text-foreground">→ {aiSummary.next_action}</p>
+                  <p className="text-[10px] text-destructive mt-0.5">⚠ {aiSummary.risk}</p>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Bookings */}
+          {bookings && bookings.length > 0 && (
+            <div className="mt-4 space-y-2">
+              <p className="text-[10px] font-semibold text-muted-foreground flex items-center gap-1"><Receipt size={10} /> BOOKINGS</p>
+              {bookings.map((b: any) => (
+                <div key={b.id} className="flex items-center justify-between p-2.5 rounded-xl bg-secondary/50 text-xs">
+                  <div>
+                    <p className="font-medium text-foreground">{b.properties?.name || 'TBD'}</p>
+                    <p className="text-[10px] text-muted-foreground">{b.rooms?.room_number}{b.beds?.bed_number ? ` / ${b.beds.bed_number}` : ''}</p>
+                  </div>
+                  <div className="text-right">
+                    <Badge variant="outline" className="text-[9px]">{b.booking_status}</Badge>
+                    {b.monthly_rent && <p className="text-[10px] text-foreground mt-0.5">₹{Number(b.monthly_rent).toLocaleString()}</p>}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
 
         {/* Tabs */}

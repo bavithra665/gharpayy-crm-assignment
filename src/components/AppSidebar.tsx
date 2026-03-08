@@ -2,7 +2,7 @@ import { NavLink, useLocation } from 'react-router-dom';
 import {
   LayoutDashboard, Users, Kanban, CalendarCheck, BarChart3, Settings,
   MessageSquare, History, X, Moon, Sun, Building2, Bed, TrendingUp,
-  Map, Sparkles,
+  Map, Sparkles, Receipt,
 } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -13,6 +13,7 @@ const salesItems = [
   { to: '/pipeline', icon: Kanban, label: 'Pipeline' },
   { to: '/visits', icon: CalendarCheck, label: 'Visits' },
   { to: '/conversations', icon: MessageSquare, label: 'Messages' },
+  { to: '/bookings', icon: Receipt, label: 'Bookings' },
   { to: '/analytics', icon: BarChart3, label: 'Analytics' },
   { to: '/historical', icon: History, label: 'Historical' },
 ];

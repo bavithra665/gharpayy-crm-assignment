@@ -177,6 +177,106 @@ export type Database = {
           },
         ]
       }
+      bookings: {
+        Row: {
+          bed_id: string | null
+          booked_by: string | null
+          booking_status: Database["public"]["Enums"]["booking_status"]
+          created_at: string
+          id: string
+          lead_id: string
+          monthly_rent: number | null
+          move_in_date: string | null
+          move_out_date: string | null
+          notes: string | null
+          payment_status: Database["public"]["Enums"]["payment_status"]
+          property_id: string | null
+          room_id: string | null
+          security_deposit: number | null
+          updated_at: string
+          visit_id: string | null
+        }
+        Insert: {
+          bed_id?: string | null
+          booked_by?: string | null
+          booking_status?: Database["public"]["Enums"]["booking_status"]
+          created_at?: string
+          id?: string
+          lead_id: string
+          monthly_rent?: number | null
+          move_in_date?: string | null
+          move_out_date?: string | null
+          notes?: string | null
+          payment_status?: Database["public"]["Enums"]["payment_status"]
+          property_id?: string | null
+          room_id?: string | null
+          security_deposit?: number | null
+          updated_at?: string
+          visit_id?: string | null
+        }
+        Update: {
+          bed_id?: string | null
+          booked_by?: string | null
+          booking_status?: Database["public"]["Enums"]["booking_status"]
+          created_at?: string
+          id?: string
+          lead_id?: string
+          monthly_rent?: number | null
+          move_in_date?: string | null
+          move_out_date?: string | null
+          notes?: string | null
+          payment_status?: Database["public"]["Enums"]["payment_status"]
+          property_id?: string | null
+          room_id?: string | null
+          security_deposit?: number | null
+          updated_at?: string
+          visit_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bookings_bed_id_fkey"
+            columns: ["bed_id"]
+            isOneToOne: false
+            referencedRelation: "beds"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bookings_booked_by_fkey"
+            columns: ["booked_by"]
+            isOneToOne: false
+            referencedRelation: "agents"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bookings_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "leads"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bookings_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "properties"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bookings_room_id_fkey"
+            columns: ["room_id"]
+            isOneToOne: false
+            referencedRelation: "rooms"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bookings_visit_id_fkey"
+            columns: ["visit_id"]
+            isOneToOne: false
+            referencedRelation: "visits"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       conversations: {
         Row: {
           agent_id: string | null
@@ -828,6 +928,12 @@ export type Database = {
         | "blocked"
         | "reserved"
         | "booked"
+      booking_status:
+        | "pending"
+        | "confirmed"
+        | "cancelled"
+        | "checked_in"
+        | "checked_out"
       lead_source:
         | "whatsapp"
         | "website"
@@ -836,6 +942,7 @@ export type Database = {
         | "phone"
         | "landing_page"
       lock_type: "visit_scheduled" | "pre_booking" | "virtual_tour"
+      payment_status: "unpaid" | "partial" | "paid"
       pipeline_stage:
         | "new"
         | "contacted"
@@ -982,6 +1089,13 @@ export const Constants = {
         "reserved",
         "booked",
       ],
+      booking_status: [
+        "pending",
+        "confirmed",
+        "cancelled",
+        "checked_in",
+        "checked_out",
+      ],
       lead_source: [
         "whatsapp",
         "website",
@@ -991,6 +1105,7 @@ export const Constants = {
         "landing_page",
       ],
       lock_type: ["visit_scheduled", "pre_booking", "virtual_tour"],
+      payment_status: ["unpaid", "partial", "paid"],
       pipeline_stage: [
         "new",
         "contacted",

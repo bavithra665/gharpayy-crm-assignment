@@ -2,20 +2,27 @@ import { useState } from 'react';
 import { useConversationMessages, useSendMessage, useMessageTemplates } from '@/hooks/useConversationThreads';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Send, Zap } from 'lucide-react';
+import { Send, Zap, Sparkles, Loader2, Copy } from 'lucide-react';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { format } from 'date-fns';
+import { supabase } from '@/integrations/supabase/client';
+import { toast } from 'sonner';
 
 interface Props {
   leadId: string | null;
   leadName: string;
+  leadBudget?: string;
+  leadLocation?: string;
+  leadStatus?: string;
 }
 
-const ConversationChat = ({ leadId, leadName }: Props) => {
+const ConversationChat = ({ leadId, leadName, leadBudget, leadLocation, leadStatus }: Props) => {
   const { data: messages, isLoading } = useConversationMessages(leadId);
   const sendMessage = useSendMessage();
   const { data: templates } = useMessageTemplates();
   const [text, setText] = useState('');
+  const [aiSuggestions, setAiSuggestions] = useState<any[]>([]);
+  const [aiLoading, setAiLoading] = useState(false);
 
   const handleSend = async () => {
     if (!text.trim() || !leadId) return;
@@ -25,6 +32,29 @@ const ConversationChat = ({ leadId, leadName }: Props) => {
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSend(); }
+  };
+
+  const handleSuggestReply = async () => {
+    setAiLoading(true);
+    setAiSuggestions([]);
+    try {
+      const { data, error } = await supabase.functions.invoke('ai-suggest-reply', {
+        body: {
+          messages: messages?.slice(-5),
+          leadName,
+          leadBudget: leadBudget || '',
+          leadLocation: leadLocation || '',
+          leadStatus: leadStatus || 'new',
+        },
+      });
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+      setAiSuggestions(data.suggestions || []);
+    } catch (e: any) {
+      toast.error(e.message || 'AI suggestion failed');
+    } finally {
+      setAiLoading(false);
+    }
   };
 
   if (!leadId) {
@@ -63,6 +93,26 @@ const ConversationChat = ({ leadId, leadName }: Props) => {
         ))}
       </div>
 
+      {/* AI Suggestions */}
+      {aiSuggestions.length > 0 && (
+        <div className="border-t border-border px-3 py-2 space-y-1.5">
+          <p className="text-[10px] font-medium text-accent flex items-center gap-1"><Sparkles size={10} /> AI Suggestions</p>
+          {aiSuggestions.map((s: any, i: number) => (
+            <button
+              key={i}
+              className="w-full text-left p-2 rounded-lg bg-accent/5 border border-accent/10 hover:bg-accent/10 transition-colors group"
+              onClick={() => { setText(s.message); setAiSuggestions([]); }}
+            >
+              <div className="flex items-center justify-between">
+                <span className="text-[9px] font-medium text-accent">{s.label}</span>
+                <Copy size={10} className="text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
+              </div>
+              <p className="text-[10px] text-foreground mt-0.5 line-clamp-2">{s.message}</p>
+            </button>
+          ))}
+        </div>
+      )}
+
       {/* Composer */}
       <div className="border-t border-border p-3">
         <div className="flex items-end gap-2">
@@ -84,6 +134,11 @@ const ConversationChat = ({ leadId, leadName }: Props) => {
               ))}
             </PopoverContent>
           </Popover>
+
+          {/* AI suggest */}
+          <Button variant="outline" size="sm" className="h-9 w-9 p-0 shrink-0 rounded-xl" onClick={handleSuggestReply} disabled={aiLoading}>
+            {aiLoading ? <Loader2 size={14} className="animate-spin" /> : <Sparkles size={14} />}
+          </Button>
 
           <textarea
             value={text}
