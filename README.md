@@ -29,7 +29,8 @@ Follow these steps to run the dashboard application on your local machine.
 ### 1. Clone the Repository
 Open your terminal and clone the repository:
 ```sh
-git clone <YOUR_GIT_URL>
+git clone https://github.com/bavithra665/gharpayy-crm-assignment.git
+
 ```
 
 ### 2. Navigate to the Project Directory
