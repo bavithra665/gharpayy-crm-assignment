@@ -136,76 +136,47 @@ export const useCreateVisit = () => {
   });
 };
 
-// Dashboard stats
+// Dashboard stats — powered by server-side SQL RPC for efficiency
 export const useDashboardStats = () =>
   useQuery({
     queryKey: ['dashboard-stats'],
+    staleTime: 60_000, // 60-second cache; realtime subscription invalidates as needed
     queryFn: async () => {
-      const [leadsRes, visitsRes] = await Promise.all([
-        supabase.from('leads').select('id, status, first_response_time_min, source, created_at'),
-        supabase.from('visits').select('id, outcome, scheduled_at'),
-      ]);
-
-      if (leadsRes.error) throw leadsRes.error;
-      if (visitsRes.error) throw visitsRes.error;
-
-      const leads = leadsRes.data;
-      const visits = visitsRes.data;
-      const today = new Date();
-      today.setHours(0, 0, 0, 0);
-
-      const totalLeads = leads.length;
-      const newToday = leads.filter(l => new Date(l.created_at) >= today).length;
-      const responseTimes = leads.filter(l => l.first_response_time_min !== null).map(l => l.first_response_time_min!);
-      const avgResponseTime = responseTimes.length ? +(responseTimes.reduce((a, b) => a + b, 0) / responseTimes.length).toFixed(1) : 0;
-      const withinSLA = responseTimes.filter(t => t <= 5).length;
-      const slaCompliance = responseTimes.length ? Math.round((withinSLA / responseTimes.length) * 100) : 0;
-      const slaBreaches = responseTimes.filter(t => t > 5).length;
-      const bookedLeads = leads.filter(l => l.status === 'booked').length;
-      const conversionRate = totalLeads ? +((bookedLeads / totalLeads) * 100).toFixed(1) : 0;
-      const upcomingVisits = visits.filter(v => new Date(v.scheduled_at) >= today && !v.outcome).length;
-      const completedVisits = visits.filter(v => v.outcome !== null).length;
-
+      const { data, error } = await supabase.rpc('get_dashboard_stats');
+      if (error) throw error;
+      const d = data as any;
       return {
-        totalLeads,
-        newToday,
-        avgResponseTime,
-        slaCompliance,
-        slaBreaches,
-        conversionRate,
-        visitsScheduled: upcomingVisits,
-        visitsCompleted: completedVisits,
-        bookingsClosed: bookedLeads,
+        totalLeads: d.totalLeads as number,
+        newToday: d.newToday as number,
+        avgResponseTime: d.avgResponseTime as number,
+        slaCompliance: d.slaCompliance as number,
+        slaBreaches: d.slaBreaches as number,
+        conversionRate: d.conversionRate as number,
+        visitsScheduled: d.visitsScheduled as number,
+        visitsCompleted: d.visitsCompleted as number,
+        bookingsClosed: d.bookingsClosed as number,
+        // Pre-aggregated chart data — no client-side computation needed
+        pipelineData: (d.pipeline as Array<{ status: string; count: string }>) || [],
+        sourcesData: (d.sources as Array<{ source: string; count: string }>) || [],
       };
     },
   });
 
-// Agent performance stats
+// Agent performance stats — single efficient SQL aggregation
 export const useAgentStats = () =>
   useQuery({
     queryKey: ['agent-stats'],
+    staleTime: 60_000,
     queryFn: async () => {
-      const [agentsRes, leadsRes] = await Promise.all([
-        supabase.from('agents').select('*').eq('is_active', true),
-        supabase.from('leads').select('id, status, assigned_agent_id, first_response_time_min'),
-      ]);
-      if (agentsRes.error) throw agentsRes.error;
-      if (leadsRes.error) throw leadsRes.error;
-
-      return agentsRes.data.map(agent => {
-        const agentLeads = leadsRes.data.filter(l => l.assigned_agent_id === agent.id);
-        const responseTimes = agentLeads.filter(l => l.first_response_time_min !== null).map(l => l.first_response_time_min!);
-        const avgResponse = responseTimes.length ? +(responseTimes.reduce((a, b) => a + b, 0) / responseTimes.length).toFixed(1) : 0;
-        const conversions = agentLeads.filter(l => l.status === 'booked').length;
-        const active = agentLeads.filter(l => !['booked', 'lost'].includes(l.status)).length;
-
-        return {
-          ...agent,
-          totalLeads: agentLeads.length,
-          activeLeads: active,
-          avgResponseTime: avgResponse,
-          conversions,
-        };
-      });
+      const { data, error } = await supabase.rpc('get_agent_stats');
+      if (error) throw error;
+      return (data as any[]) as Array<{
+        id: string;
+        name: string;
+        totalLeads: number;
+        activeLeads: number;
+        conversions: number;
+        avgResponseTime: number;
+      }>;
     },
   });

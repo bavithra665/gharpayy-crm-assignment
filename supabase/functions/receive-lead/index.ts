@@ -18,7 +18,11 @@ Deno.serve(async (req) => {
     });
   }
 
+  // Extract IP for rate limiting from headers
+  const clientIp = req.headers.get("x-forwarded-for") || req.headers.get("x-real-ip") || "unknown";
+
   try {
+    console.info(JSON.stringify({ event: "receive_lead_started", ip: clientIp, method: req.method }));
     const body = await req.json();
     const { name, phone, email, source, budget, preferred_location, notes } = body;
 
@@ -38,6 +42,7 @@ Deno.serve(async (req) => {
 
     // Validate field lengths
     if (name.length > 200 || (email && email.length > 255) || (phone && phone.length > 30)) {
+      console.warn(JSON.stringify({ event: "validation_failed", reason: "Field too long", ip: clientIp }));
       return new Response(JSON.stringify({ error: "Field too long" }), {
         status: 400,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -51,6 +56,24 @@ Deno.serve(async (req) => {
       Deno.env.get("SUPABASE_URL")!,
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
     );
+
+    // RATE LIMITING CHECK (e.g. Max 10 requests per 60 minutes per IP)
+    const { data: isAllowed, error: rateLimitError } = await supabase.rpc("check_rate_limit", {
+      p_ip_address: clientIp,
+      p_endpoint: "receive-lead",
+      p_limit: 10,
+      p_window_minutes: 60
+    });
+
+    if (rateLimitError) {
+      console.error(JSON.stringify({ event: "rate_limit_error", error: rateLimitError.message }));
+    } else if (isAllowed === false) {
+      console.warn(JSON.stringify({ event: "rate_limit_exceeded", ip: clientIp }));
+      return new Response(JSON.stringify({ error: "Too many requests. Please try again later." }), {
+        status: 429,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
 
     // Check for duplicate by phone
     const { data: existing } = await supabase
@@ -73,32 +96,21 @@ Deno.serve(async (req) => {
       );
     }
 
-    // Smart round-robin: find agent with fewest active leads
-    const { data: agents } = await supabase
-      .from("agents")
-      .select("id, name")
-      .eq("is_active", true);
-
+    // Atomic round-robin: call the PL/pgSQL function
+    const { data: agentId, error: agentError } = await supabase.rpc('get_next_available_agent');
+    
     let assignedAgentId: string | null = null;
     let assignedAgentName: string | null = null;
 
-    if (agents && agents.length > 0) {
-      const { data: leadCounts } = await supabase
-        .from("leads")
-        .select("assigned_agent_id")
-        .not("status", "in", '("booked","lost")');
-
-      const countMap: Record<string, number> = {};
-      agents.forEach((a) => (countMap[a.id] = 0));
-      (leadCounts || []).forEach((l) => {
-        if (l.assigned_agent_id && countMap[l.assigned_agent_id] !== undefined) {
-          countMap[l.assigned_agent_id]++;
-        }
-      });
-
-      const sorted = agents.sort((a, b) => (countMap[a.id] || 0) - (countMap[b.id] || 0));
-      assignedAgentId = sorted[0].id;
-      assignedAgentName = sorted[0].name;
+    if (agentId && !agentError) {
+      assignedAgentId = agentId;
+      const { data: agentData } = await supabase
+        .from("agents")
+        .select("name")
+        .eq("id", assignedAgentId)
+        .single();
+      
+      if (agentData) assignedAgentName = agentData.name;
     }
 
     // Insert lead
@@ -139,6 +151,13 @@ Deno.serve(async (req) => {
       }
     }
 
+    console.info(JSON.stringify({ 
+      event: "lead_processed_successfully", 
+      lead_id: lead.id, 
+      assigned_agent_id: assignedAgentId,
+      source: leadSource 
+    }));
+
     return new Response(
       JSON.stringify({
         success: true,
@@ -151,7 +170,8 @@ Deno.serve(async (req) => {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       }
     );
-  } catch (err) {
+  } catch (err: any) {
+    console.error(JSON.stringify({ event: "function_error", error: err.message, stack: err.stack }));
     return new Response(
       JSON.stringify({ error: err.message || "Internal server error" }),
       {

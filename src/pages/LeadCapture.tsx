@@ -26,9 +26,8 @@ const LeadCapture = () => {
     setErrorMsg('');
 
     try {
-      const projectId = import.meta.env.VITE_SUPABASE_PROJECT_ID;
       const res = await fetch(
-        `https://${projectId}.supabase.co/functions/v1/receive-lead`,
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/receive-lead`,
         {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -36,7 +35,9 @@ const LeadCapture = () => {
         }
       );
       const data = await res.json();
-      if (!res.ok) {
+      if (res.status === 409) {
+        setStatus('success'); // Lead exists, we still consider it a successful interaction
+      } else if (!res.ok) {
         setErrorMsg(data.message || data.error || 'Something went wrong');
         setStatus('error');
       } else {

@@ -1,0 +1,6 @@
+[functions.receive-lead]
+
+verify_jwt = false
+
+[functions.automation-jobs]
+verify_jwt = false

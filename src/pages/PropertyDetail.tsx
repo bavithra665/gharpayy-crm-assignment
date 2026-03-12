@@ -73,7 +73,27 @@ export default function PropertyDetail() {
       toast.error('Please fill in all required fields and select a bed.');
       return;
     }
+
     try {
+      // Quietly ensure they exist as a lead in CRM
+      try {
+        await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/receive-lead`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            name: customerForm.name,
+            phone: customerForm.phone,
+            email: customerForm.email,
+            source: 'website',
+            budget: String(selectedRoom.rent_per_bed || selectedRoom.expected_rent || ''),
+            notes: `Attempted pre-booking at: ${property.name}`,
+            preferred_location: property.area
+          })
+        });
+      } catch (e) {
+        console.warn("Lead background registration silently failed", e);
+      }
+
       const result = await createReservation.mutateAsync({
         property_id: property.id,
         bed_id: selectedBed.id,
@@ -440,9 +460,9 @@ export default function PropertyDetail() {
         <DialogContent className="sm:max-w-md">
           <DialogHeader><DialogTitle>Schedule a Visit</DialogTitle></DialogHeader>
           <div className="space-y-4">
-            <div><Label>Your Name</Label><Input placeholder="Full name" /></div>
-            <div><Label>Phone</Label><Input placeholder="+91..." /></div>
-            <div><Label>Preferred Date</Label><Input type="date" /></div>
+            <div><Label>Your Name</Label><Input placeholder="Full name" value={customerForm.name} onChange={e => setCustomerForm(f => ({ ...f, name: e.target.value }))} /></div>
+            <div><Label>Phone</Label><Input placeholder="+91..." value={customerForm.phone} onChange={e => setCustomerForm(f => ({ ...f, phone: e.target.value }))} /></div>
+            <div><Label>Preferred Date</Label><Input type="date" value={customerForm.moveInDate} onChange={e => setCustomerForm(f => ({ ...f, moveInDate: e.target.value }))} /></div>
             <div><Label>Preferred Time</Label>
               <Select>
                 <SelectTrigger><SelectValue placeholder="Select time slot" /></SelectTrigger>
@@ -453,8 +473,47 @@ export default function PropertyDetail() {
                 </SelectContent>
               </Select>
             </div>
-            <Button className="w-full bg-accent hover:bg-accent/90 text-accent-foreground" onClick={() => { toast.success("Visit request submitted! We'll confirm shortly."); setActionMode(null); }}>
-              Request Visit
+            <Button disabled={createReservation.isPending} className="w-full bg-accent hover:bg-accent/90 text-accent-foreground" onClick={async () => {
+              if (!customerForm.name || !customerForm.phone) { toast.error("Please fill your name and phone"); return; }
+              try {
+                // Ensure lead exists
+                await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/receive-lead`, {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({
+                    name: customerForm.name,
+                    phone: customerForm.phone,
+                    email: customerForm.email,
+                    source: 'website',
+                    notes: `Requested visit at: ${property.name}`,
+                  })
+                });
+                
+                // Get the lead ID by phone
+                const { data: leadData } = await import('@/integrations/supabase/client').then(m => 
+                   m.supabase.from('leads').select('id, assigned_agent_id').eq('phone', customerForm.phone).single()
+                );
+                
+                if (leadData) {
+                   const { data: visitData, error: visitErr } = await import('@/integrations/supabase/client').then(m => 
+                      m.supabase.from('visits').insert({
+                         lead_id: leadData.id,
+                         property_id: property.id,
+                         assigned_staff_id: leadData.assigned_agent_id,
+                         scheduled_at: customerForm.moveInDate ? new Date(customerForm.moveInDate).toISOString() : new Date().toISOString(),
+                         notes: "Scheduled from customer portal",
+                      }).select().single()
+                   );
+                   if (visitErr) throw visitErr;
+                }
+                
+                toast.success("Visit request submitted! We'll confirm shortly.");
+                setActionMode(null);
+              } catch (e: any) {
+                 toast.error(e.message || "Failed to schedule visit");
+              }
+            }}>
+              {createReservation.isPending ? 'Requesting...' : 'Request Visit'}
             </Button>
           </div>
         </DialogContent>
